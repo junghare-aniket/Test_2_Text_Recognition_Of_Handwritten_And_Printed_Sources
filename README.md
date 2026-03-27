@@ -147,7 +147,7 @@ The Tridis dataset presents a ***distinct challenge*** with its mix of handwriti
   <img src="results/Comparison/output_40.png" width="90%" />
 </p>
 
-> All image outputs are available in the [`results/Comparison/`](results/Comparison/) folder.
+> All image outputs are available in the [`results/Comparison/`](results/comparison/) folder.
 
 ---
 
