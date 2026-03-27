@@ -264,8 +264,8 @@ GSoC26/
 ├── evaluate.py                                      # Evaluation: CER/WER metrics + CSV report
 │
 ├── notebooks/
-│   ├── gsoc_2026_workflow_handwritten.ipynb         # Jupyter notebook demonstrating the full pipeline
-│   └── gsoc_2026_workflow_handwritten.pdf           # PDF export of notebook with outputs
+│   ├── gsoc_2026_workflow_printed.ipynb             # Jupyter notebook demonstrating the full pipeline
+│   └── gsoc_2026_workflow_printed.pdf               # PDF export of notebook with outputs
 │
 ├── scripts/
 │   ├── run_finetune.sh                              # SLURM script for fine-tuning
@@ -274,13 +274,13 @@ GSoC26/
 │
 ├── models/                                          # Model weights (download separately)
 │   ├── Qwen2.5-VL-7B-Instruct/                      # Base VLM model
-│   ├── qwen2.5-vl-ocr-lora-handwritten              # LoRA adapter weights (output of finetune.py)
+│   ├── qwen2.5-vl-ocr-lora-printed                  # LoRA adapter weights (output of finetune.py)
 │   └── mim-trocr-gsoc25/                            # Fine-tuned TrOCR model (developed during GSoC 2025)
 │
 ├── data/                                            # Datasets (download separately)
-│   ├── Handwriting-scans/                           # Training images (used by finetune.py)
-│   ├── Handwriting-transcriptions/                  # Training ground truth (used by finetune.py)
-│   ├── given_test_images_handwritten/               # Test images (used by inference.py)
+│   ├── Printed-scans/                               # Training images (used by finetune.py)
+│   ├── Printed-transcriptions/                      # Training ground truth (used by finetune.py)
+│   ├── given_test_images_printed/                   # Test images (used by inference.py)
 │   ├── Rodrigo_eval/                                # Directory having image-transcription pairs (used by evaluate.py)
 │   |── Orinoco_eval/                                # Directory having image-transcription pairs (used by evaluate.py)
 │   └── Tridis_eval/                                 # Directory having image-transcription pairs (used by evaluate.py)
@@ -298,7 +298,7 @@ GSoC26/
 
 ##  **Implementation Guide**
 
-Refer to this [**notebook**](notebooks/gsoc_2026_workflow_handwritten.ipynb) for the inference guideline.
+Refer to this [**notebook**](notebooks/gsoc_2026_workflow_printed.ipynb) for the inference guideline.
 
 ### **1. Install Required Packages**
 
@@ -315,9 +315,9 @@ Run the fine-tuning script to adapt the VLM on historical manuscript data:
 ```bash
 python -u finetune.py \
   --model-dir models/Qwen2.5-VL-7B-Instruct \
-  --image-dir data/Handwriting-scans \
-  --gt-dir data/Handwriting-transcriptions \
-  --output-dir models/qwen2.5-vl-ocr-lora-handwritten
+  --image-dir data/Printed-scans \
+  --gt-dir data/Printed-transcriptions \
+  --output-dir models/qwen2.5-vl-ocr-lora-printed
 ```
 
 ### **3. Run Inference Pipeline**
@@ -327,8 +327,8 @@ Process a manuscript image through the full 4-stage pipeline:
 ```bash
 python -u inference.py \
   --model-dir models/Qwen2.5-VL-7B-Instruct \
-  --lora models/qwen2.5-vl-ocr-lora-handwritten/final \
-  --image-dir data/given_test_images_handwritten \
+  --lora models/qwen2.5-vl-ocr-lora-printed/final \
+  --image-dir data/given_test_images_printed \
   --output-visual results/Visual_Results \
   --trocr models/mim-trocr-gsoc25
 ```
@@ -340,7 +340,7 @@ Evaluate the pipeline on a dataset with ground truth transcriptions:
 ```bash
 python -u evaluate.py \
   --model-dir models/Qwen2.5-VL-7B-Instruct \
-  --lora models/qwen2.5-vl-ocr-lora-handwritten/final \
+  --lora models/qwen2.5-vl-ocr-lora-printed/final \
   --image-dir data/Rodrigo_eval/Rodrigo_Images \
   --gt-dir data/Rodrigo_eval/Rodrigo_Transcriptions \
   --output-csv results/Rodrigo_evaluation_results.csv
