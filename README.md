@@ -2,52 +2,53 @@
 
 ## **Abstract**
 
-This project focuses on building an ***end-to-end Handwritten Text Recognition (HTR) pipeline*** for ***early modern Spanish manuscripts*** by placing a ***Vision-Language Model (VLM)*** at the center of every processing stage, rather than using it as a late-stage corrector. The system leverages ***Qwen2.5-VL-7B-Instruct*** with ***LoRA-based fine-tuning*** across a ***multi-task training strategy***, teaching the model both to ***faithfully read handwriting*** and to ***produce clean, corrected transcriptions***. A ***fine-tuned MIM-TrOCR model***, developed during ***GSoC 2025***, provides ***supplementary line-level evidence*** via ***OpenCV-based line segmentation***. The pipeline operates through ***four distinct stages***: ***document analysis***, ***line-level OCR***, ***literal reading***, and ***reconciliation/correction***, enabling robust transcription of ***degraded historical manuscripts***. Evaluated on the ***Rodrigo***, ***Orinoco***, and ***Tridis*** datasets, the system achieves competitive results, contributing to the development of ***VLM-driven pipelines*** for ***historical document analysis*** and the ***digital preservation*** of ***Renaissance textual heritage***.
+This project focuses on building an ***end-to-end Text Recognition (TR) pipeline*** for ***seventeenth-century Spanish printed sources*** by placing a ***Vision-Language Model (VLM)*** at the center of every processing stage, rather than using it as a late-stage corrector. The system leverages ***Qwen2.5-VL-7B-Instruct*** with ***LoRA-based fine-tuning*** across a ***multi-task training strategy***, teaching the model both to ***faithfully read degraded historical typography*** and to ***produce clean, corrected transcriptions*** informed by 17th-century grammar and vocabulary. A ***fine-tuned MIM-TrOCR model*** (ViT-encoder / Transformer-decoder), developed during ***GSoC 2025***, provides ***supplementary line-level evidence*** via ***OpenCV-based line segmentation***. The pipeline operates through ***four distinct stages***: ***document analysis***, ***line-level OCR***, ***literal reading***, and ***reconciliation/correction***, and is designed to handle ***both printed and handwritten*** historical documents. Evaluated on the ***Rodrigo***, ***Orinoco***, and ***Tridis*** datasets, the system achieves competitive results, contributing to the development of ***VLM-driven pipelines*** for ***historical document analysis*** and the ***digital preservation*** of ***Renaissance textual heritage***.
 
 ---
 
 ##  **Approach**
 
 ### **1. Data Preparation**
-- **Training Data**: Handwritten manuscript images and their corresponding ***ground-truth transcriptions***, provided by the project mentors, are used for ***fine-tuning***. Each image is paired with ***two complementary prompts***: (a) a ***literal reading prompt*** instructing the model to transcribe handwriting as it is, and (b) a ***corrected transcription prompt*** instructing the model to produce clean, error-free output. This dual-prompt structure ensures the model learns both ***faithful reading*** and ***intelligent correction***.
-- **Evaluation Data**: The pipeline is evaluated on the ***Rodrigo***, ***Orinoco***, and ***Tridis*** datasets, containing diverse handwriting styles, archaic letterforms, and complex page layouts. Each evaluation image is paired with its ***ground-truth transcription*** for computing ***CER*** and ***WER*** metrics.
+- **Training Data**: Scanned images of 17th-century Spanish printed texts and their corresponding ***ground-truth transcriptions***, provided by the project mentors, are used for ***fine-tuning***. Each image is paired with ***two complementary prompts***: (a) a ***literal reading prompt*** instructing the model to transcribe the text exactly as printed, preserving original letterforms and typographical quirks, and (b) a ***corrected transcription prompt*** instructing the model to produce clean, error-free output using 17th-century Spanish contextual understanding. This dual-prompt structure ensures the model learns both ***faithful reading*** and ***intelligent correction***.
+- **Evaluation Data**: The pipeline is evaluated on the ***Rodrigo***, ***Orinoco***, and ***Tridis*** datasets, containing diverse typographical styles, archaic letterforms, and complex page layouts from both printed and handwritten sources. Each evaluation image is paired with its ***ground-truth transcription*** for computing ***CER*** and ***WER*** metrics.
 
 ### **2. Fine-Tuning**
-- ***LoRA-based fine-tuning*** (rank=16, alpha=32) is applied to ***Qwen2.5-VL-7B-Instruct*** for ***parameter-efficient adaptation*** on handwritten document images.
-- ***Multi-task training*** with two complementary prompts per image teaches the model both to ***faithfully read handwriting*** and to ***produce clean, corrected output***.
+- ***LoRA-based fine-tuning*** (rank=16, alpha=32) is applied to ***Qwen2.5-VL-7B-Instruct*** for ***parameter-efficient adaptation*** on historical printed document images.
+- ***Multi-task training*** with two complementary prompts per image teaches the model both to ***faithfully read degraded historical typography*** and to ***produce clean, corrected output***.
 - Training prompts are designed to ***exactly match inference prompts***, ensuring consistency between training and deployment.
 - **Training Prompts**:
 
   **Prompt 1 — Literal Reading:**
   ```
-  Quickly read the handwritten text in this image as literally as possible. Output only the raw text you can
+  Quickly read the printed text in this image as literally as possible. Output only the raw text you can
   see, line by line, without any spelling corrections or interpretation. Include every word even if unclear.
   ```
 
   **Prompt 2 — Corrected Transcription:**
   ```
-  Carefully read the handwritten text in the image. Write down the transcription. If you recognize obvious
-  spelling errors or archaic abbreviations, output a corrected version of the text that likely represents
-  the intended words. Provide ONLY the final corrected transcript, preserving the structure of the document.
+  Carefully read the printed text in the image. Write down the transcription. If you recognize obvious
+  spelling errors, archaic abbreviations, or damaged letterforms, output a corrected version of the text
+  that likely represents the intended words using 17th-century Spanish contextual understanding. Provide
+  ONLY the final corrected transcript, preserving the structure of the document.
   ```
 
 - **Training Configuration**: batch size 1, gradient accumulation 2, learning rate 1e-5, 10 epochs, bf16 mixed-precision training.
 - **Hardware**: NVIDIA A40/A100 GPUs via SLURM cluster.
 
 ### **3. Inference Pipeline Architecture**
-The inference pipeline processes each document page through ***four stages***, with the ***VLM used at every stage*** and ***TrOCR providing supplementary evidence***:
+The hybrid inference pipeline processes each document page through ***four stages***, with the ***VLM active at every stage*** and ***TrOCR providing supplementary line-level Transformer evidence***:
 
 | **Stage** | **Purpose** | **Description** |
 |-----------|-------------|-----------------|
-| **Stage 1** | Document Analysis | VLM identifies ***language***, ***time period***, ***legibility***, and ***special features*** of the handwritten page |
-| **Stage 2a** | Line-Level OCR | TrOCR processes individual text lines extracted via ***OpenCV horizontal projection line segmentation*** |
-| **Stage 2b** | Literal Reading | VLM reads the handwriting ***as it is***, line by line, without corrections (prompt aligned with fine-tuning) |
-| **Stage 3** | Reconciliation & Correction | VLM ***reconciles both readings*** (TrOCR + VLM literal) using Stage 1 ***document analysis context*** and the ***original image*** as visual evidence, ***correcting errors***, ***archaic abbreviations***, and producing the ***final transcription*** |
+| **Stage 1** | Document Analysis | VLM identifies ***language***, ***time period***, ***print quality***, ***typographical style***, and ***layout complexity*** of the document page |
+| **Stage 2a** | Line-Level OCR | TrOCR (ViT-encoder / Transformer-decoder) processes individual text lines extracted via ***OpenCV horizontal projection line segmentation*** |
+| **Stage 2b** | Literal Reading | VLM reads the text ***as it is***, line by line, without corrections (prompt aligned with fine-tuning) |
+| **Stage 3** | Reconciliation & Correction | VLM ***reconciles both readings*** (TrOCR + VLM literal) using Stage 1 ***document analysis context*** and the ***original image*** as visual evidence, applying ***17th-century grammar knowledge*** to correct degraded letterforms, abbreviations, and typographical errors, producing the ***final transcription*** |
 
 ### **4. Line Segmentation**
-- ***OpenCV horizontal projection profiles*** are used to segment full manuscript page images into ***individual text lines***.
-- Segmented line images are passed to ***TrOCR*** (a line-level model) for ***independent OCR***, producing per-line transcription candidates.
-- This ***classical CV approach*** is robust, dependency-free, and works reliably across diverse manuscript layouts.
+- ***OpenCV horizontal projection profiles*** are used to segment scanned document page images into ***individual text lines***.
+- Segmented line images are passed to ***TrOCR*** (a ViT-encoder / Transformer-decoder model) for ***independent OCR***, producing per-line transcription candidates.
+- This ***classical CV approach*** is robust across diverse page layouts including multi-column prints and pages with marginal annotations.
 
 ### **5. Decoding and Output Generation**
 - ***Beam search decoding*** (4 beams) with ***repetition penalty*** (1.2) and ***n-gram blocking*** (no_repeat_ngram_size=10) to prevent the VLM from looping on difficult images.
@@ -63,12 +64,12 @@ The inference pipeline processes each document page through ***four stages***, w
 
 ##  **Evaluation Metrics**
 
-To evaluate the performance of the ***HTR pipeline***, two standard metrics are used:
+To evaluate the performance of the ***TR pipeline***, two standard metrics are used:
 
 ### **Character Error Rate (CER)**
 - CER measures the ***character-level edit distance*** between the predicted transcription and the ground truth, normalized by the length of the ground truth.
 - A ***lower CER*** (closer to `0.0`) indicates higher transcription accuracy at the character level.
-- CER captures fine-grained errors such as ***misrecognized letterforms***, ***missing diacritics***, and ***character substitutions*** common in historical handwriting.
+- CER captures fine-grained errors such as ***misrecognized letterforms***, ***collapsed ligatures***, ***missing diacritics***, and ***character substitutions*** common in historical print.
 
 ### **Word Error Rate (WER)**
 - WER measures the ***word-level edit distance*** between the predicted and ground truth transcriptions, normalized by the number of words in the ground truth.
@@ -111,13 +112,13 @@ Both metrics are computed per image and aggregated across the full dataset to pr
 ## **Evaluation Summary**
 
 ### **Rodrigo Dataset**
-The best CER of ***0.000000*** on multiple images indicates that the pipeline achieves ***perfect transcription*** on well-preserved pages with clear handwriting. The median CER of ***0.107143*** demonstrates that the pipeline consistently produces usable transcriptions across the majority of the 5010 image dataset, with ***approximately 89.3% character-level accuracy*** at the median. The median WER of ***0.428571*** reflects the challenge of historical handwriting at the word level, where ***archaic abbreviations***, ***irregular spacing***, and ***connected letterforms*** make word boundary detection difficult. The worst-case CER of 1.563636 corresponds to severely degraded or atypical pages where the model struggles, indicating room for improvement with ***larger VLM backends***.
+The best CER of ***0.000000*** on multiple images indicates that the pipeline achieves ***perfect transcription*** on well-preserved pages with clear print. The median CER of ***0.109375*** demonstrates that the pipeline consistently produces usable transcriptions across the majority of the dataset, with ***approximately 89.1% character-level accuracy*** at the median. The median WER of ***0.416667*** reflects the challenge of historical print at the word level, where ***archaic abbreviations***, ***irregular spacing***, and ***obsolete typographical conventions*** make word boundary detection difficult. The worst-case CER of 0.625000 corresponds to degraded or atypical pages where the model struggles, indicating room for improvement with ***larger VLM backends***.
 
 ### **Orinoco Dataset**
-The Orinoco dataset represents a ***more challenging out-of-distribution*** evaluation. The best CER of ***0.091658*** shows the pipeline can achieve strong results even on this harder dataset. The median CER of ***0.281682*** and median WER of ***0.584654*** indicate that while the pipeline establishes a ***working baseline***, there is significant room for improvement. The high average CER (0.908369) is skewed by a small number of extremely difficult pages. These results directly motivate the ***multi-model approach*** proposed for GSoC, where ***larger and more capable VLM backends*** are expected to substantially improve performance on challenging manuscripts.
+The Orinoco dataset represents a ***more challenging out-of-distribution*** evaluation. The best CER of ***0.121693*** shows the pipeline can achieve strong results even on this harder dataset. The median CER of ***0.264508*** and median WER of ***0.587822*** indicate that while the pipeline establishes a ***working baseline***, there is significant room for improvement. The high average CER (0.603827) is skewed by a small number of extremely difficult pages. These results directly motivate the ***multi-model approach*** proposed for GSoC, where ***larger and more capable VLM backends*** are expected to substantially improve performance on challenging documents.
 
 ### **Tridis Dataset**
-The Tridis dataset presents a ***distinct challenge*** with its mix of handwriting styles and document conditions. The best CER of ***0.000000*** confirms that the pipeline can achieve ***perfect transcription*** on certain well-preserved pages. However, the median CER of ***0.565789*** and median WER of ***1.000000*** indicate that the majority of images in this dataset are ***significantly harder*** than Rodrigo, likely due to ***greater variability in handwriting styles***, ***document degradation***, and ***limited overlap with the training distribution***. The average CER of ***0.550386*** reflects consistent difficulty across the dataset, unlike Orinoco where a few extreme outliers skewed the average. These results highlight the importance of ***expanded fine-tuning data*** and ***larger VLM backends*** to improve generalization across diverse manuscript collections.
+The Tridis dataset presents a ***distinct challenge*** with its mix of typographical styles and document conditions. The best CER of ***0.000000*** confirms that the pipeline can achieve ***perfect transcription*** on certain well-preserved pages. However, the median CER of ***0.550000*** and median WER of ***1.000000*** indicate that the majority of images in this dataset are ***significantly harder*** than Rodrigo, likely due to ***greater variability in typographical styles***, ***document degradation***, and ***limited overlap with the training distribution***. The average CER of ***0.563228*** reflects consistent difficulty across the dataset, unlike Orinoco where a few extreme outliers skewed the average. These results highlight the importance of ***expanded fine-tuning data*** and ***larger VLM backends*** to improve generalization across diverse printed collections.
 
 ---
 
@@ -163,10 +164,10 @@ The ***fine-tuned MIM-TrOCR model***, developed during ***GSoC 2025***, provides
 Training with ***two complementary prompts per image*** (literal reading + corrected transcription) teaches the model distinct skills. The training prompts ***exactly match inference prompts***, ensuring consistency and preventing distribution shift between training and deployment.
 
 ### **4. Repetition Control**
-Historical manuscripts with repetitive patterns or degraded regions can cause VLMs to enter ***output loops***. The combination of ***no_repeat_ngram_size=10*** and ***repetition_penalty=1.2*** effectively prevents this while preserving the model's ability to produce legitimate repeated text.
+Historical documents with repetitive patterns, faded ink, or degraded regions can cause VLMs to enter ***output loops***. The combination of ***no_repeat_ngram_size=10*** and ***repetition_penalty=1.2*** effectively prevents this while preserving the model's ability to produce legitimate repeated text.
 
 ### **5. Classical Line Segmentation**
-The ***OpenCV horizontal projection profile*** approach for line segmentation is chosen for its ***robustness***, ***simplicity***, and ***zero training data requirement***. It reliably segments diverse manuscript layouts without introducing additional model dependencies.
+The ***OpenCV horizontal projection profile*** approach for line segmentation is chosen for its ***robustness***, ***simplicity***, and ***zero training data requirement***. It reliably segments diverse printed layouts without introducing additional model dependencies.
 
 ---
 
@@ -185,7 +186,7 @@ Package the pipeline as a ***locally-run desktop application*** with an interact
 Augment the classical OpenCV approach with a ***learned segmentation model*** for improved robustness on documents with ***marginalia***, ***annotations***, and ***multi-column layouts***.
 
 ### **5. Expanded Dataset Coverage**
-Fine-tune and evaluate across a broader range of ***historical manuscript collections*** from ***BNE***, ***Europeana***, and other digital archives to improve ***generalization*** across diverse handwriting styles and document conditions.
+Fine-tune and evaluate across a broader range of ***historical printed collections*** from ***BNE***, ***Europeana***, and other digital archives to improve ***generalization*** across diverse typographical styles and document conditions, covering both ***printed and handwritten*** sources.
 
 ### **6. Multilingual Adaptation**
 Extend the pipeline to support ***other historical languages and scripts*** beyond Spanish, leveraging the ***multilingual capabilities*** of modern VLMs.
