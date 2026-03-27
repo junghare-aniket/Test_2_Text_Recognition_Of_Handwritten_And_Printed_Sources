@@ -124,27 +124,27 @@ The Tridis dataset presents a ***distinct challenge*** with its mix of handwriti
 ##  **Sample Transcription Results**
 
 <p align="center">
-  <img src="results/Comparison/output_15.png" width="90%" />
+  <img src="results/Comparison/15.png" width="90%" />
 </p>
 
 <p align="center">
-  <img src="results/Comparison/output_17.png" width="90%" />
+  <img src="results/Comparison/17.png" width="90%" />
 </p>
 
 <p align="center">
-  <img src="results/Comparison/output_18.png" width="90%" />
+  <img src="results/Comparison/18.png" width="90%" />
 </p>
 
 <p align="center">
-  <img src="results/Comparison/output_28.png" width="90%" />
+  <img src="results/Comparison/28.png" width="90%" />
 </p>
 
 <p align="center">
-  <img src="results/Comparison/output_29.png" width="90%" />
+  <img src="results/Comparison/29.png" width="90%" />
 </p>
 
 <p align="center">
-  <img src="results/Comparison/output_40.png" width="90%" />
+  <img src="results/Comparison/40.png" width="90%" />
 </p>
 
 > All image outputs are available in the [`results/Comparison/`](results/comparison/) folder.
